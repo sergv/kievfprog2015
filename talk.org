@@ -1,0 +1,272 @@
+#+Title: Unifying parsing and prettyprinting
+#+Author: Sergey Vinokurov
+#+Email: serg.foo@gmail.com
+
+# #+REVEAL_ROOT: http://cdn.jsdelivr.net/reveal.js/3.1.0/
+
+# Heading level, if level <= HLEVEL then slides are arranged horizontally.
+#+REVEAL_HLEVEL: 3
+#+REVEAL_SLIDE_NUMBER: nil
+
+#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:nil reveal_control:t
+#+OPTIONS: reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
+#+OPTIONS: reveal_width:1200 reveal_height:800
+
+# Push each slide change to the browser history
+#+OPTIONS: reveal_history:t
+
+#+OPTIONS: toc:1
+
+# #+OPTIONS: reveal_single_file:t
+
+#+REVEAL_TRANS: linear
+#+REVEAL_MARGIN: 0.1
+#+REVEAL_THEME: white
+#+REVEAL_HEAD_PREAMBLE: <meta name="description" content="Unifying parsing and prettyprinting presentation.">
+#+REVEAL_POSTAMBLE: <p> Created by sergv. </p>
+
+# #+REVEAL_PLUGINS: (highlight markdown notes)
+# #+REVEAL_HIGHLIGHT_CSS: solarized
+
+# #+PROPERTY: session *Haskell* cache yes results output graphics exports both tangle yes
+
+# Babel tangling and reverse links configuration
+#+PROPERTY: tangle Talk.hs
+#+PROPERTY: comments link
+#+PROPERTY: exports code
+
+# insert newline padding in tangled output
+#+PROPERTY: padline yes
+
+
+* Preamble                                                         :noexport:
+
+#+name: module header
+#+BEGIN_SRC haskell
+module Talk where
+
+#+END_SRC
+
+* Intro
+
+** Why parse and prettyprint?
+# #+ATTR_REVEAL: :frag (none none none highlight-red)
+   + Programming languages and EDSLs
+   + Structured data - can "prettyprint" to a tree-like structure. E.g.
+     - JSON
+     - XML
+   + May be convenient for debugging, but not likely (?)
+   + The problem: /must keep them in sync/
+     - DRY - don't repeat yourself
+
+** Our example
+   - We'll use simple expression language to drive the discussion
+   - Arithmetic expressions with literals, addition and multiplication
+
+#+BEGIN_SRC haskell
+data Expr =
+    Lit Int
+  | Add Expr Expr
+  | Mul Expr Expr
+#+END_SRC
+
+** Parsing
+   - Goging from string to a tree-like structure
+   - May fail if input is invalid
+   - It's a Covariant Functor - a producer of values
+   - Many parsing combinator library support at least Applicative interface
+     I.e. they share some standard set of combinators
+
+#+BEGIN_SRC haskell
+newtype Parser a = Parser { runParser :: String -> [(a, String)] }
+#+END_SRC
+
+#+BEGIN_SRC haskell :tangle no
+exprParser :: Parser Expr
+exprParser = pAdd <|> between (pChar '(') (pChar ')') exprParser
+
+pAdd = pMul <|>
+       Add <$> pMul <*> pChar '+' *> pAdd
+
+pMul = pAtomic <|>
+       Mul <$> pAtomic <*> pChar '*' *> pMul
+
+pAtomic = Lit <$> pInt <|>
+          bracket (pChar '(') (pChar ')') exprParser
+#+END_SRC
+
+** Prettyprinting
+   - Going from a tree-like structure to a string
+   - Usually does not fail - can always produce a string given some Expr
+   - However, we'll need to support notion of failure
+   - It's a Contravariant Functor - a consumer of values
+   - Usually there's no standard set of combinators that prettyprinting libraries support
+   - Most of the time the interface is somewhat different than for parsers -
+     a typeclass for values, that can be prettyprinted.
+   - Let's introduce first-class printers
+
+#+BEGIN_SRC haskell
+newtype Printer a = Printer { runPrinter :: a -> Maybe String }
+#+END_SRC
+
+* Relationship between parsing and prettyprinting
+   Parsing and prettyprinting are almost inverses of one another.
+
+#+name: parsing prettyprinting inverses
+#+BEGIN_SRC haskell :tangle no
+parseExpr :: String -> Either String a
+ppExpr    :: a -> String
+#+END_SRC
+
+   [[./img/parsing_prettyprinting_adjoint.png]]
+
+** Parsing/prettyprinting laws
+   Well-behaved prettyprinting should produce a string that results in the
+   original expression, when parsed.
+
+#+name: parseExpr . ppExpr law
+#+BEGIN_SRC haskell :tangle no
+parseExpr . ppExpr == id
+#+END_SRC
+
+** Parsing/prettyprinting laws, cont'd
+
+   After single cycle of parsing and prettyprinting the string whitespace normalizes.
+
+   - That's how code formatters work
+   - Formatting a second time does not change anything
+   - (ppExpr . parseExpr) is an idempotent function - f (f x) = f x
+
+#+name: parsing prettyprinting normalization
+#+BEGIN_SRC haskell :tangle no
+(ppExpr . parseExpr) == (ppExpr . parseExpr) . (ppExpr . parseExpr)
+#+END_SRC
+
+* One technique to bring them all
+  Now we're going to come up with a combinators that will allow us to express
+  parsers and prettyprinters at the same time.
+
+  When in doubt, you can always assume that you're writing a parser or
+  a prettyprinter, whichever is easier for you.
+
+  [[./img/one_ring.png]]
+
+** Building syntax description combinators
+   The basic things we're operating on are characters. We can parse current
+   character - get one from input, if we're not at eof.
+
+   We can add given character to our pretty output.
+
+#+BEGIN_SRC haskell :tangle no
+   getChar :: Parser Char
+   ppChar  :: Printer Char
+#+END_SRC
+
+   Let's call this bit a /token/. It's a basic syntax description, /s/, that
+   works with characters.
+
+#+BEGIN_SRC haskell :tangle no
+   token :: s Char
+#+END_SRC
+
+* Semantic actions
+   - We want to get ~s a~ out of ~s Char~
+   - Need Functor interface for our syntax descriptions
+   - But we must have possibility to parse ~a~ from string as well as prettyprint it to string at the same time
+
+#+BEGIN_SRC haskell :tangle no
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+#+END_SRC
+
+#+BEGIN_SRC haskell
+fmapParser :: (a -> b) -> Parser a -> Parser b
+fmapParser f (Parser g) = Parser $ fmap f . g
+#+END_SRC
+
+** Semantic actions for Printer
+   - The prettyprinter ~Printer a~ is a, so called, Contravariant functor
+   - It consumes values of type a and produces string
+   - There's no vanilla Functor instance for it
+
+#+BEGIN_SRC haskell :tangle no
+fmapPrinter :: (a -> b) -> Printer a -> Printer b
+
+-- expanding Printer definition
+fmapPrinter :: (a -> b) -> (a -> String) -> (b -> String)
+
+class Contravariant f where
+  contramap :: (a -> b) -> f b -> f a
+#+END_SRC
+
+** Partial isomorphisms - partial invertible functions
+   - Functor or Contravariant are not enough
+   - They allow to go in only one direction, syntax description must support both
+   - We'll use partial invertible functions that allow to go in bo directions
+   - Partiality is useful here as we don't want to confine ourselves to restrictive universe of invertible functions
+
+#+BEGIN_SRC haskell
+data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
+
+apply :: Iso a b -> a -> Maybe b
+apply (Iso f _) = f
+
+unapply :: Iso a b -> b -> Maybe a
+unapply (Iso _ g) = g
+#+END_SRC
+
+   $\forall$ x, y: ~apply iso x == Just y <=> unapply iso y == Just x~
+
+** Semantic actions for syntax descriptions
+
+#+BEGIN_SRC haskell
+class IsoFunctor f where
+  (<$$>) :: Iso a b -> f a -> f b
+
+instance IsoFunctor Parser where
+  f <$$> Parser g = Parser g
+
+instance IsoFunctor Printer where
+  f <$$> Printer g = Printer g
+#+END_SRC
+
+* Sequences
+** Applicative parsers
+
+   -  Less powerful than monads
+   -  Provides just enough power to parse context-free grammars
+   -  In the end will enable us to succes
+
+#+BEGIN_SRC haskell :tangle no
+class (Functor f) => Applicative f where
+  pure  :: a -> f a
+  (<*>) :: f (a -> b) -> f a -> f b
+#+END_SRC
+
+   The pure function will just return something without consuming any
+   input.
+
+** Parsing sequence
+
+   Use applicative bind operator - <*>
+
+** Parsing alternatives
+
+   Use another typeclass - Alternative
+
+#+BEGIN_SRC haskell :tangle no
+class (Applicative f) => Alternative f where
+  empty :: a -> f a
+  (<|>) :: f a -> f a -> f a
+#+END_SRC
+
+** Putting it all together
+
+# #+BEGIN_SRC haskell
+# class (Functor f, Applicative f, Alternative f) => Syntax f where
+#   char :: Char -> f Char
+# #+END_SRC
+
+** Why monads are too powerful here
+
+   There are just no invertible monads out there!
