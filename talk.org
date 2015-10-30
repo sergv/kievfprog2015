@@ -1,34 +1,47 @@
-#+Title: Unifying parsing and prettyprinting
-#+Author: Sergey Vinokurov
-#+Email: serg.foo@gmail.com
+#+TITLE: Unifying parsing and prettyprinting
+# #+BEAMER_HEADER: \author{\texorpdfstring{Sergey Vinokurov\newline\url{serg.foo@gmail.com}}{Sergey Vinokurov}}
+#+AUTHOR: Sergey Vinokurov
+#+EMAIL: serg.foo@gmail.com
+#+DATE: \today
 
-# #+REVEAL_ROOT: http://cdn.jsdelivr.net/reveal.js/3.1.0/
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   num:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:
+#+LINK_HOME:
 
-# Heading level, if level <= HLEVEL then slides are arranged horizontally.
-#+REVEAL_HLEVEL: 3
-#+REVEAL_SLIDE_NUMBER: nil
 
-#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:nil reveal_control:t
-#+OPTIONS: reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
-#+OPTIONS: reveal_width:1200 reveal_height:800
+#+startup: beamer
+#+LATEX_CLASS: beamer
 
-# Push each slide change to the browser history
-#+OPTIONS: reveal_history:t
+# use bigger font
+#+LATEX_CLASS_OPTIONS: [bigger, presentation]
 
-#+OPTIONS: toc:1
+#+LATEX_HEADER: \usepackage[backend=bibtex]{biblatex}
+#+LATEX_HEADER: \bibliography{Rendel.bib}
 
-# #+OPTIONS: reveal_single_file:t
+# The beamer exporter expects to be told which level of headlines
+# defines the frames.  We use the first level headlines for sections
+# and the second (hence H:2) for frames.
+#+OPTIONS:   H:2 toc:t
+#+BEAMER_FRAME_LEVEL: 2
 
-#+REVEAL_TRANS: linear
-#+REVEAL_MARGIN: 0.1
-#+REVEAL_THEME: white
-#+REVEAL_HEAD_PREAMBLE: <meta name="description" content="Unifying parsing and prettyprinting presentation.">
-#+REVEAL_POSTAMBLE: <p> Created by sergv. </p>
+# Remove navigaation symbols at the bottom of the slides.
+#+BEAMER_HEADER: \beamertemplatenavigationsymbolsempty
 
-# #+REVEAL_PLUGINS: (highlight markdown notes)
-# #+REVEAL_HIGHLIGHT_CSS: solarized
+# Remove date
+#+BEAMER_HEADER: \date{}
 
-# #+PROPERTY: session *Haskell* cache yes results output graphics exports both tangle yes
+# Give a slight yellow tint to the notes page
+#+BEAMER_HEADER: \setbeamertemplate{note page}{\pagecolor{yellow!5}\insertnote}\usepackage{palatino}
+
+# #+BEAMER_THEME: Madrid
+#+COLUMNS: %45ITEM %10BEAMER_ENV(Env) %10BEAMER_ACT(Act) %4BEAMER_COL(Col) %8BEAMER_OPT(Opt)
+
 
 # Babel tangling and reverse links configuration
 #+PROPERTY: tangle Talk.hs
@@ -38,6 +51,28 @@
 # insert newline padding in tangled output
 #+PROPERTY: padline yes
 
+# \newcommand{\clap}[1]{\hbox to0pt{\hss#1\hss}}
+# \renewcommand{\diamond}[2][0.25ex]{\hbox to 1.5em{\hfil\clap{\raisebox{-0.45ex}{\BigDiamondshape}}\clap{\raisebox{#1}{\scriptsize #2}}\hfil}}
+# \newcommand{\rdiamond}[2][0.25ex]{\hbox to 1.5em{\hfil\clap{\raisebox{-0.45ex}{\ \TriangleRight}}\clap{\raisebox{#1}{\scriptsize #2}}\hfil}}
+# \newcommand{\ldiamond}[2][0.25ex]{\hbox to 1.5em{\hfil\clap{\raisebox{-0.45ex}{\TriangleLeft\ }}\clap{\raisebox{#1}{\scriptsize #2}}\hfil}}
+#
+# % greek letters
+# %format alpha  =  "\alpha{}"
+# %format beta   =  "\beta{}"
+# %format gamma  =  "\gamma{}"
+# %format delta  =  "\delta{}"
+#
+# % fancy combinators
+# %format >=>    =  ">\!\!\!\!\:\!=\!\!\!\!\!\:\!>"
+# %format <>     =  "\Diamond"
+# %format <+>    =  "\diamond{$+$}"
+# %format <->    =  "\diamond{$-$}"
+# %format <|>    =  "\diamond{$|$}"
+# %format <$>    =  "\diamond[0ex]{\rm\$}"
+# %format <*>    =  "\diamond{$\ast$}"
+# %format ***    =  "\times"
+# %format *>     =  "\rdiamond{$\ast$}"
+# %format <*     =  "\ldiamond{$\ast$}"
 
 * Preamble                                                         :noexport:
 
@@ -45,72 +80,81 @@
 #+BEGIN_SRC haskell
 module Talk where
 
+import Control.Applicative hiding ((<**>))
+import Control.Monad
+import Data.Char (ord)
+import Data.List
 #+END_SRC
 
 * Intro
-
-** Why parse and prettyprint?
-# #+ATTR_REVEAL: :frag (none none none highlight-red)
-   + Programming languages and EDSLs
-   + Structured data - can "prettyprint" to a tree-like structure. E.g.
-     - JSON
-     - XML
-   + May be convenient for debugging, but not likely (?)
-   + The problem: /must keep them in sync/
-     - DRY - don't repeat yourself
+** Why parse and prettyprint are useful together?
+\setbeamercovered{transparent}
+#+ATTR_BEAMER: :overlay +-
++ Programming languages and external DSLs
++ Structured data - can "prettyprint" to a tree-like structure. E.g.
+  - JSON
+  - XML
++ Serialization/deserialization
++ The problem: /must keep them in sync/
+  - DRY - don't repeat yourself
+# + May be convenient for debugging, but not likely (?)
 
 ** Our example
-   - We'll use simple expression language to drive the discussion
-   - Arithmetic expressions with literals, addition and multiplication
+- We'll use simple expression language to drive the discussion
+- Arithmetic expressions with literals, addition and multiplication
 
 #+BEGIN_SRC haskell
 data Expr =
     Lit Int
   | Add Expr Expr
   | Mul Expr Expr
+  deriving (Show)
 #+END_SRC
 
-** Parsing
-   - Goging from string to a tree-like structure
-   - May fail if input is invalid
-   - It's a Covariant Functor - a producer of values
-   - Many parsing combinator library support at least Applicative interface
-     I.e. they share some standard set of combinators
-
-#+BEGIN_SRC haskell
-newtype Parser a = Parser { runParser :: String -> [(a, String)] }
-#+END_SRC
+** Sample expression parser
 
 #+BEGIN_SRC haskell :tangle no
 exprParser :: Parser Expr
-exprParser = pAdd <|> between (pChar '(') (pChar ')') exprParser
+exprParser = pAdd
 
 pAdd = pMul <|>
-       Add <$> pMul <*> pChar '+' *> pAdd
+       Add <$> pMul <* pChar '+' <*> pAdd
 
 pMul = pAtomic <|>
-       Mul <$> pAtomic <*> pChar '*' *> pMul
+       Mul <$> pAtomic <* pChar '*' <*> pMul
 
-pAtomic = Lit <$> pInt <|>
-          bracket (pChar '(') (pChar ')') exprParser
+pAtomic =
+  Lit <$> pInt <|>
+  bracket (pChar '(') (pChar ')') exprParser
+#+END_SRC
+
+** Parsing
+- Goging from string to a tree-like structure
+- May fail if input is invalid
+- It's a Covariant Functor - a producer of values
+- Many parsing combinator library support at least Applicative interface
+  I.e. they share some standard set of combinators
+
+#+BEGIN_SRC haskell
+newtype Parser a =
+  Parser (String -> [(a, String)])
 #+END_SRC
 
 ** Prettyprinting
-   - Going from a tree-like structure to a string
-   - Usually does not fail - can always produce a string given some Expr
-   - However, we'll need to support notion of failure
-   - It's a Contravariant Functor - a consumer of values
-   - Usually there's no standard set of combinators that prettyprinting libraries support
-   - Most of the time the interface is somewhat different than for parsers -
-     a typeclass for values, that can be prettyprinted.
-   - Let's introduce first-class printers
+- Going from a tree-like structure to a string
+- Usually does not fail - can always produce a string given some Expr
+- However, we'll need to support a notion of failure
+- It's a Contravariant Functor - a consumer of values
+- Usually there's no standard set of combinators that prettyprinting libraries support
+- Most of the time the interface is somewhat different than for parsers -
+  a typeclass for values, that can be prettyprinted
 
 #+BEGIN_SRC haskell
-newtype Printer a = Printer { runPrinter :: a -> Maybe String }
+newtype Printer a = Printer (a -> Maybe String)
 #+END_SRC
 
-* Relationship between parsing and prettyprinting
-   Parsing and prettyprinting are almost inverses of one another.
+** Relationship between parsing and prettyprinting
+Parsing and prettyprinting are almost inverses of one another.
 
 #+name: parsing prettyprinting inverses
 #+BEGIN_SRC haskell :tangle no
@@ -118,61 +162,58 @@ parseExpr :: String -> Either String a
 ppExpr    :: a -> String
 #+END_SRC
 
-   [[./img/parsing_prettyprinting_adjoint.png]]
+#+ATTR_LaTeX: scale=0.5 wrap placement={r}{0.4\textwidth}
+[[file:./img/parsing_prettyprinting_adjoint.png]]
 
 ** Parsing/prettyprinting laws
-   Well-behaved prettyprinting should produce a string that results in the
-   original expression, when parsed.
+Well-behaved prettyprinting should produce a string that results in the
+original expression, when parsed.
 
-#+name: parseExpr . ppExpr law
-#+BEGIN_SRC haskell :tangle no
-parseExpr . ppExpr == id
-#+END_SRC
+\begin{center}
+$\text{parseExpr}\, \circ \text{ppExpr} = \text{id}$
+\end{center}
 
-** Parsing/prettyprinting laws, cont'd
+#+BEGIN_LATEX
+\pause
+#+END_LATEX
 
-   After single cycle of parsing and prettyprinting the string whitespace normalizes.
+However, for ($$ \text{ppExpr} \circ \text{parseExpr} $$) this is not the case
 
-   - That's how code formatters work
-   - Formatting a second time does not change anything
-   - (ppExpr . parseExpr) is an idempotent function - f (f x) = f x
+** Parsing/prettyprinting laws, continued
+- After single cycle of parsing and prettyprinting the string whitespace normalizes.
+- Code formatters work this way
+- Formatting a second time does not change anything
+- ($$ \text{ppExpr} \circ \text{parseExpr}$$) is idempotent, $f (f\; x) = f\; x$
 
-#+name: parsing prettyprinting normalization
-#+BEGIN_SRC haskell :tangle no
-(ppExpr . parseExpr) == (ppExpr . parseExpr) . (ppExpr . parseExpr)
-#+END_SRC
+\begin{center}
+$\text{ppExpr} \circ \text{parseExpr} =
+  (\text{ppExpr} \circ \text{parseExpr}) \circ (\text{ppExpr} \circ \text{parseExpr})$
+\end{center}
 
-* One technique to bring them all
-  Now we're going to come up with a combinators that will allow us to express
-  parsers and prettyprinters at the same time.
-
-  When in doubt, you can always assume that you're writing a parser or
-  a prettyprinter, whichever is easier for you.
-
-  [[./img/one_ring.png]]
-
+* Building syntax description combinators
 ** Building syntax description combinators
-   The basic things we're operating on are characters. We can parse current
-   character - get one from input, if we're not at eof.
+The basic things we're operating on are characters. We can parse current
+character - get one from input, if we're not at eof.
 
-   We can add given character to our pretty output.
+We can add given character to our pretty output.
 
 #+BEGIN_SRC haskell :tangle no
-   getChar :: Parser Char
-   ppChar  :: Printer Char
+getChar :: Parser Char
+ppChar  :: Printer Char
 #+END_SRC
 
-   Let's call this bit a /token/. It's a basic syntax description, /s/, that
-   works with characters.
+Let's call this bit a /token/. It's a basic syntax description, /s/, that
+works with characters.
 
 #+BEGIN_SRC haskell :tangle no
-   token :: s Char
+token :: s Char
 #+END_SRC
 
 * Semantic actions
-   - We want to get ~s a~ out of ~s Char~
-   - Need Functor interface for our syntax descriptions
-   - But we must have possibility to parse ~a~ from string as well as prettyprint it to string at the same time
+** Semantic actions
+- Want to get ~s a~ out of ~s Char~
+- Need Functor interface for syntax descriptions
+- Must provide means to parse ~a~ from string as well as prettyprint it to string at the same time
 
 #+BEGIN_SRC haskell :tangle no
 class Functor f where
@@ -181,32 +222,35 @@ class Functor f where
 
 #+BEGIN_SRC haskell
 fmapParser :: (a -> b) -> Parser a -> Parser b
-fmapParser f (Parser g) = Parser $ fmap f . g
+fmapParser f (Parser g) =
+  Parser $ map (\(x, str) -> (f x, str)) . g
 #+END_SRC
 
 ** Semantic actions for Printer
-   - The prettyprinter ~Printer a~ is a, so called, Contravariant functor
-   - It consumes values of type a and produces string
-   - There's no vanilla Functor instance for it
+- The prettyprinter ~Printer a~ is a, so called, Contravariant functor
+- It consumes values of type a and produces string
+- There's no vanilla Functor instance for it
 
 #+BEGIN_SRC haskell :tangle no
-fmapPrinter :: (a -> b) -> Printer a -> Printer b
+-- Trying to write vanilla functor instance.
+f :: (a -> b) -> Printer a -> Printer b
 
--- expanding Printer definition
-fmapPrinter :: (a -> b) -> (a -> String) -> (b -> String)
-
-class Contravariant f where
-  contramap :: (a -> b) -> f b -> f a
+-- Expand Printer definition.
+-- Cannot write this function.
+f :: (a -> b) -> (a -> String) -> (b -> String)
 #+END_SRC
 
-** Partial isomorphisms - partial invertible functions
-   - Functor or Contravariant are not enough
-   - They allow to go in only one direction, syntax description must support both
-   - We'll use partial invertible functions that allow to go in bo directions
-   - Partiality is useful here as we don't want to confine ourselves to restrictive universe of invertible functions
+** Partial isomorphisms
+- Functor or Contravariant alone are not enough
+- They allow to go in only one direction, syntax description must support both
+- Use partial invertible functions that allow to go in both directions
+
+** Partial isomorphisms, continued
+- Partiality is useful here as we don't want to confine ourselves to restrictive universe of total invertible functions
 
 #+BEGIN_SRC haskell
-data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
+data Iso a b =
+  Iso (a -> Maybe b) (b -> Maybe a)
 
 apply :: Iso a b -> a -> Maybe b
 apply (Iso f _) = f
@@ -215,58 +259,305 @@ unapply :: Iso a b -> b -> Maybe a
 unapply (Iso _ g) = g
 #+END_SRC
 
-   $\forall$ x, y: ~apply iso x == Just y <=> unapply iso y == Just x~
+#+BEGIN_LATEX
+\pause
+#+END_LATEX
 
-** Semantic actions for syntax descriptions
+$\forall x, y: \text{apply}\; \text{iso}\; x = \text{Just}\; y \iff \text{unapply}\; \text{iso}\; y = \text{Just}\; x$
+
+** IsoFunctor
+- Define our own Functor-like class
+- If isomorphism fails, our Parser and Printer will fail too
 
 #+BEGIN_SRC haskell
 class IsoFunctor f where
   (<$$>) :: Iso a b -> f a -> f b
+infixr 4 <$$>
 
 instance IsoFunctor Parser where
-  f <$$> Parser g = Parser g
+  iso <$$> Parser p = Parser $ \s ->
+    [ (y, s')
+    | (x, s') <- p s
+    , Just y  <- [apply iso x]
+    ]
 
 instance IsoFunctor Printer where
-  f <$$> Printer g = Printer g
+  iso <$$> Printer g = Printer $
+    unapply iso >=> g -- Maybe monad
 #+END_SRC
 
 * Sequences
-** Applicative parsers
+** Parsing sequences
+- Need a way to express "parse X followed by Y"
+- Will use Applicative-like interface
+  + Less powerful than monads
+  + Provides just enough power to parse context-free grammars
 
-   -  Less powerful than monads
-   -  Provides just enough power to parse context-free grammars
-   -  In the end will enable us to succes
+** Applicative
+- The Applicative class is designed for covariant functors - producers of values
+- As with Functor, cannot implement this interface for Printer
+- Reformulation of Applicative - ProductFunctor
 
-#+BEGIN_SRC haskell :tangle no
-class (Functor f) => Applicative f where
-  pure  :: a -> f a
-  (<*>) :: f (a -> b) -> f a -> f b
+#+BEGIN_SRC haskell
+class (IsoFunctor f) => ProductFunctor f where
+  (<**>) :: f a -> f b -> f (a, b)
+
+infixr 5 <**>
+
+instance ProductFunctor Parser where
+  Parser p <**> Parser q = Parser $ \s ->
+    [ ((x, y), s'')
+    | (x, s')  <- p s
+    , (y, s'') <- q s'
+    ]
 #+END_SRC
 
-   The pure function will just return something without consuming any
-   input.
+** Printer instance
+#+BEGIN_SRC haskell :tangle no
+class (IsoFunctor f) => ProductFunctor f where
+  (<**>) :: f a -> f b -> f (a, b)
+#+END_SRC
 
-** Parsing sequence
-
-   Use applicative bind operator - <*>
-
-** Parsing alternatives
-
-   Use another typeclass - Alternative
+#+BEGIN_SRC haskell
+instance ProductFunctor Printer where
+  Printer p <**> Printer q = Printer $
+    \(x, y) -> liftA2 (++) (p x) (q y)
+#+END_SRC
 
 #+BEGIN_SRC haskell :tangle no
-class (Applicative f) => Alternative f where
-  empty :: a -> f a
-  (<|>) :: f a -> f a -> f a
+liftA2
+  :: (Applicative f)
+  => (a -> b -> c) -> f a -> f b -> f c
+#+END_SRC
+
+* Alternatives
+** The final bit: Alternative
+- This time need to support a notion "parse X or parse Y if parsing X fails"
+- There's starndard class for this called Alternative, but it depends on Applicative
+- Define alternative Alternative called PureAlternative!
+
+#+BEGIN_SRC haskell
+class PureAlternative f where
+  -- parser or printer that always fails
+  emptyAlt :: f a
+  (<||>)   :: f a -> f a -> f a
+
+infixl 3 <||>
+#+END_SRC
+
+** Alternative instances
+#+BEGIN_SRC haskell
+instance PureAlternative Parser where
+  Parser p <||> Parser q = Parser $ \s -> p s ++ q s
+  emptyAlt               = Parser $ const []
+
+instance PureAlternative Printer where
+  Printer p <||> Printer q = Printer $ \x ->
+    p x <|> q x
+  emptyAlt                 = Printer $ \_ -> Nothing
 #+END_SRC
 
 ** Putting it all together
 
-# #+BEGIN_SRC haskell
-# class (Functor f, Applicative f, Alternative f) => Syntax f where
-#   char :: Char -> f Char
-# #+END_SRC
+#+BEGIN_SRC haskell
+class ( IsoFunctor s
+      , ProductFunctor s
+      , PureAlternative s
+      ) => Syntax s where
+  token :: s Char
+  -- Eq constraint is for printer
+  pureSyn :: (Eq a) => a -> s a
+#+END_SRC
 
-** Why monads are too powerful here
+** Syntax for Parser
 
-   There are just no invertible monads out there!
+#+BEGIN_SRC haskell
+instance Syntax Parser where
+  pureSyn x = Parser $ \s -> [(x, s)]
+  token = Parser f
+    where
+      f (c:cs) = [(c, cs)]
+      f []     = []
+#+END_SRC
+
+** Syntax for Printer
+#+BEGIN_SRC haskell
+instance Syntax Printer where
+  pureSyn x = Printer $ \x' ->
+    if x == x'
+    then Just []
+    else Nothing
+  token  = Printer $ \c -> Just [c]
+#+END_SRC
+
+* Expression syntax
+** Parsing digits
+#+BEGIN_SRC haskell
+subset :: (a -> Bool) -> Iso a a
+subset p = Iso f f
+  where
+    f x | p x       = Just x
+        | otherwise = Nothing
+
+digit :: (Syntax s) => s Char
+digit = subset isDigit <$$> token
+
+isDigit :: Char -> Bool
+isDigit c = '0' <= c && c <= '9'
+#+END_SRC
+
+** Utilities for parsing sequences
+#+BEGIN_SRC haskell
+isoNil :: Iso () [a]
+isoNil = Iso f g
+  where
+    f () = Just []
+    g [] = Just ()
+    g _  = Nothing
+
+isoCons :: Iso (a, [a]) [a]
+isoCons = Iso f g
+  where
+    f (x, xs) = Just $ x : xs
+    g (x:xs)  = Just (x, xs)
+    g []      = Nothing
+#+END_SRC
+
+** Utilities for parsing sequences, continued
+#+BEGIN_SRC haskell
+pmany :: (Syntax s) => s a -> s [a]
+pmany p = isoNil <$$> pureSyn () <||>
+          isoCons <$$> p <**> pmany p
+
+pmany1 :: (Syntax s) => s a -> s [a]
+pmany1 p = isoCons <$$> p <**> pmany p
+#+END_SRC
+
+** Parsing numbers
+#+BEGIN_SRC haskell
+inverse :: Iso a b -> Iso b a
+inverse (Iso f g) = Iso g f
+
+decimal :: Iso Int String
+decimal = Iso f g
+  where
+    f = Just . show
+    g str | all isDigit str
+          = Just $
+            foldl' (\a x -> a * 10 + h x) 0 str
+          | otherwise
+          = Nothing
+    h x = ord x - ord '0'
+
+integer :: (Syntax s) => s Int
+integer = inverse decimal <$$> pmany digit
+#+END_SRC
+
+** Utilities for parsing expressions
+Can derive these via Template Haskell
+
+#+BEGIN_SRC haskell
+lit :: Iso Int Expr
+lit = Iso f g
+  where
+    f n = Just $ Lit n
+    g (Lit n) = Just n
+    g _       = Nothing
+#+END_SRC
+
+** Utilities for parsing expressions, continued
+#+BEGIN_SRC haskell
+add :: Iso (Expr, Expr) Expr
+add = Iso f g
+  where
+    f (x, y)    = Just $ Add x y
+    g (Add x y) = Just (x, y)
+    g _         = Nothing
+
+mul :: Iso (Expr, Expr) Expr
+mul = Iso f g
+  where
+    f (x, y)    = Just $ Mul x y
+    g (Mul x y) = Just (x, y)
+    g _         = Nothing
+#+END_SRC
+
+** More utilities for parsing expressions
+#+BEGIN_SRC haskell
+(**>) :: (Syntax s) => Char -> s a -> s a
+(**>) c s = Iso f g <$$> token <**> s
+  where
+    f (c', x) | c == c'   = Just x
+              | otherwise = Nothing
+    g x = Just (c, x)
+
+between
+  :: (Syntax s) => Char -> Char -> s a -> s a
+between l r s =
+  Iso f g <$$> token <**> s <**> token
+  where
+    f (l', (x, r'))
+      | l == l' && r == r' = Just x
+      | otherwise          = Nothing
+    g x = Just (l, (x, r))
+
+#+END_SRC
+
+** Parsing expressions
+#+BEGIN_SRC haskell
+expr :: (Syntax s) => s Expr
+expr = add <$$> factor <**> '+' **> expr <||>
+       factor
+
+factor :: (Syntax s) => s Expr
+factor = mul <$$> atomic <**> '*' **> factor <||>
+         atomic
+
+atomic :: (Syntax s) => s Expr
+atomic = lit <$$> integer <||> between '(' ')' expr
+#+END_SRC
+
+** Test run
+
+#+BEGIN_SRC haskell
+runParser :: Parser a -> String -> Maybe a
+runParser (Parser p) str =
+  case dropWhile (not . null . snd) $ p str of
+    (x, []):_ -> Just x
+    _         -> Nothing
+
+runPrinter :: Printer a -> a -> Maybe String
+runPrinter (Printer p) = p
+#+END_SRC
+
+#+BEGIN_EXAMPLE
+> runParser expr "10*(2+3)"
+Just (Mul (Lit 10) (Add (Lit 2) (Lit 3)))
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+> runParser expr "(10)*((2)+(3))" >>=
+    runPrinter expr
+Just "10*(2+3)"
+#+END_EXAMPLE
+
+# ** Bibliography
+# \printbibliography
+
+* Questions
+** Questions slide
+   :PROPERTIES:
+   :BEAMER_env: fullframe
+   :END:
+
+#+BEGIN_LATEX
+\begin{center}
+  {\Huge Questions?}
+\end{center}
+
+\pause
+
+\begin{center}
+  {\small PS btw, we are hiring}
+\end{center}
+#+END_LATEX

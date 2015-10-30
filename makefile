@@ -1,11 +1,13 @@
 EMACS=emacs
 
-HASKELL_MODE_DIR="/home/sergey/emacs/third-party/haskell-mode/"
-ORG_REVEAL_DIR="/home/sergey/emacs/third-party/org-reveal/"
+HASKELL_MODE_DIR=/home/sergey/emacs/third-party/haskell-mode/
+ORG_REVEAL_DIR=/home/sergey/emacs/third-party/org-reveal/
+ORG_MODE_DIR=/home/sergey/emacs/third-party/org-mode/lisp
 
 BATCH=$(EMACS) --batch --no-init-file                                   \
   --directory "$(HASKELL_MODE_DIR)"                                     \
   --directory "$(ORG_REVEAL_DIR)"                                       \
+  --directory "$(ORG_MODE_DIR)"                                         \
   --eval '(require (quote org))'                                        \
   --eval '(require (quote ob))'                                         \
   --eval '(require (quote ob-tangle))'                                  \
