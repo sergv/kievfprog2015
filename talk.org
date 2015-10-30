@@ -2,14 +2,13 @@
 # #+BEAMER_HEADER: \author{\texorpdfstring{Sergey Vinokurov\newline\url{serg.foo@gmail.com}}{Sergey Vinokurov}}
 #+AUTHOR: Sergey Vinokurov
 #+EMAIL: serg.foo@gmail.com
-#+DATE: \today
+#+DATE:
 
 #+DESCRIPTION:
 #+KEYWORDS:
 #+LANGUAGE:  en
 #+OPTIONS:   num:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
-#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_EXCLUDE_TAGS: noexport
 #+LINK_UP:
 #+LINK_HOME:
@@ -27,7 +26,7 @@
 # The beamer exporter expects to be told which level of headlines
 # defines the frames.  We use the first level headlines for sections
 # and the second (hence H:2) for frames.
-#+OPTIONS:   H:2 toc:t
+#+OPTIONS:   H:2 toc:nil
 #+BEAMER_FRAME_LEVEL: 2
 
 # Remove navigaation symbols at the bottom of the slides.
@@ -74,6 +73,30 @@
 # %format *>     =  "\rdiamond{$\ast$}"
 # %format <*     =  "\ldiamond{$\ast$}"
 
+
+
+#+OPTIONS: reveal_single_file:t
+
+# #+REVEAL_ROOT: http://cdn.jsdelivr.net/reveal.js/3.1.0/
+
+# Heading level, if level <= HLEVEL then slides are arranged horizontally.
+#+REVEAL_HLEVEL: 3
+#+REVEAL_SLIDE_NUMBER: t
+
+#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:nil reveal_control:nil
+#+OPTIONS: reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
+#+OPTIONS: reveal_width:1200 reveal_height:800
+#+OPTIONS: reveal_history:t
+
+#+REVEAL_TRANS: linear
+#+REVEAL_MARGIN: 0.2
+#+REVEAL_THEME: white
+#+REVEAL_HEAD_PREAMBLE: <meta name="description" content="Unifying parsing and prettyprinting presentation.">
+#+REVEAL_POSTAMBLE: <p> Created by sergv. </p>
+
+#+REVEAL_PLUGINS: (classList markdown zoom notes)
+# #+REVEAL_HIGHLIGHT_CSS: solarized.css
+
 * Preamble                                                         :noexport:
 
 #+name: module header
@@ -87,13 +110,15 @@ import Data.List
 #+END_SRC
 
 * Intro
-** Why parse and prettyprint are useful together?
+** Why parsing and prettyprinting are useful in combination?
+#+BEGIN_LATEX
 \setbeamercovered{transparent}
+#+END_LATEX
+#+ATTR_REVEAL: :frag (roll-in)
 #+ATTR_BEAMER: :overlay +-
 + Programming languages and external DSLs
-+ Structured data - can "prettyprint" to a tree-like structure. E.g.
-  - JSON
-  - XML
+  - Code formatting
++ Structured data - can "prettyprint" to a tree-like structure, e.g. JSON, XML
 + Serialization/deserialization
 + The problem: /must keep them in sync/
   - DRY - don't repeat yourself
@@ -162,33 +187,34 @@ parseExpr :: String -> Either String a
 ppExpr    :: a -> String
 #+END_SRC
 
-#+ATTR_LaTeX: scale=0.5 wrap placement={r}{0.4\textwidth}
+#+ATTR_HTML: :width 70%
+#+ATTR_LATEX: scale=0.5 wrap placement={r}{0.4\textwidth}
 [[file:./img/parsing_prettyprinting_adjoint.png]]
 
 ** Parsing/prettyprinting laws
 Well-behaved prettyprinting should produce a string that results in the
 original expression, when parsed.
 
-\begin{center}
+#+BEGIN_CENTER
 $\text{parseExpr}\, \circ \text{ppExpr} = \text{id}$
-\end{center}
+#+END_CENTER
 
 #+BEGIN_LATEX
 \pause
 #+END_LATEX
 
-However, for ($$ \text{ppExpr} \circ \text{parseExpr} $$) this is not the case
+However, for (\( \text{ppExpr} \circ \text{parseExpr} \)) this is not the case
 
 ** Parsing/prettyprinting laws, continued
 - After single cycle of parsing and prettyprinting the string whitespace normalizes.
 - Code formatters work this way
 - Formatting a second time does not change anything
-- ($$ \text{ppExpr} \circ \text{parseExpr}$$) is idempotent, $f (f\; x) = f\; x$
+- (\( \text{ppExpr} \circ \text{parseExpr} \)) is idempotent, $f (f\; x) = f\; x$
 
-\begin{center}
+#+BEGIN_CENTER
 $\text{ppExpr} \circ \text{parseExpr} =
   (\text{ppExpr} \circ \text{parseExpr}) \circ (\text{ppExpr} \circ \text{parseExpr})$
-\end{center}
+#+END_CENTER
 
 * Building syntax description combinators
 ** Building syntax description combinators
@@ -211,9 +237,9 @@ token :: s Char
 
 * Semantic actions
 ** Semantic actions
-- Want to get ~s a~ out of ~s Char~
+- Want to get /s a/ out of /s Char/
 - Need Functor interface for syntax descriptions
-- Must provide means to parse ~a~ from string as well as prettyprint it to string at the same time
+- Must provide means to parse /a/ from string as well as prettyprint it to string at the same time
 
 #+BEGIN_SRC haskell :tangle no
 class Functor f where
@@ -227,7 +253,7 @@ fmapParser f (Parser g) =
 #+END_SRC
 
 ** Semantic actions for Printer
-- The prettyprinter ~Printer a~ is a, so called, Contravariant functor
+- The prettyprinter /Printer a/ is a, so called, Contravariant functor
 - It consumes values of type a and produces string
 - There's no vanilla Functor instance for it
 
@@ -482,7 +508,7 @@ mul = Iso f g
     g _         = Nothing
 #+END_SRC
 
-** More utilities for parsing expressions
+** Some non-modular utilities for parsing expressions
 #+BEGIN_SRC haskell
 (**>) :: (Syntax s) => Char -> s a -> s a
 (**>) c s = Iso f g <$$> token <**> s
@@ -500,21 +526,23 @@ between l r s =
       | l == l' && r == r' = Just x
       | otherwise          = Nothing
     g x = Just (l, (x, r))
-
 #+END_SRC
 
 ** Parsing expressions
 #+BEGIN_SRC haskell
 expr :: (Syntax s) => s Expr
-expr = add <$$> factor <**> '+' **> expr <||>
-       factor
+expr =
+  add <$$> factor <**> '+' **> expr <||>
+  factor
 
 factor :: (Syntax s) => s Expr
-factor = mul <$$> atomic <**> '*' **> factor <||>
-         atomic
+factor =
+  mul <$$> atomic <**> '*' **> factor <||>
+  atomic
 
 atomic :: (Syntax s) => s Expr
-atomic = lit <$$> integer <||> between '(' ')' expr
+atomic = lit <$$> integer <||>
+         between '(' ')' expr
 #+END_SRC
 
 ** Test run
@@ -544,20 +572,34 @@ Just "10*(2+3)"
 # ** Bibliography
 # \printbibliography
 
-* Questions
-** Questions slide
+* Questions?
+** Questions?
    :PROPERTIES:
    :BEAMER_env: fullframe
    :END:
 
+#+BEGIN_CENTER
 #+BEGIN_LATEX
-\begin{center}
-  {\Huge Questions?}
-\end{center}
-
-\pause
-
-\begin{center}
-  {\small PS btw, we are hiring}
-\end{center}
+{\Huge Questions?}
 #+END_LATEX
+#+END_CENTER
+
+#+BEGIN_LATEX
+\pause
+#+END_LATEX
+
+#+BEGIN_CENTER
+PS btw, we are hiring
+#+END_CENTER
+
+# #+BEGIN_LATEX
+# \begin{center}
+#   {\Huge Questions?}
+# \end{center}
+#
+# \pause
+#
+# \begin{center}
+#   {\small PS btw, we are hiring}
+# \end{center}
+# #+END_LATEX
