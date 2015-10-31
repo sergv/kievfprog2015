@@ -89,7 +89,8 @@
 #+OPTIONS: reveal_history:t
 
 #+REVEAL_TRANS: linear
-#+REVEAL_MARGIN: 0.2
+#+REVEAL_MARGIN: 0.1
+#+REVEAL_MIN_SCALE: 0.8
 #+REVEAL_THEME: white
 #+REVEAL_HEAD_PREAMBLE: <meta name="description" content="Unifying parsing and prettyprinting presentation.">
 #+REVEAL_POSTAMBLE: <p> Created by sergv. </p>
@@ -187,7 +188,7 @@ parseExpr :: String -> Either String a
 ppExpr    :: a -> String
 #+END_SRC
 
-#+ATTR_HTML: :width 70%
+#+ATTR_HTML: :width 50%
 #+ATTR_LATEX: scale=0.5 wrap placement={r}{0.4\textwidth}
 [[file:./img/parsing_prettyprinting_adjoint.png]]
 
@@ -203,6 +204,7 @@ $\text{parseExpr}\, \circ \text{ppExpr} = \text{id}$
 \pause
 #+END_LATEX
 
+#+ATTR_REVEAL: :frag roll-in
 However, for (\( \text{ppExpr} \circ \text{parseExpr} \)) this is not the case
 
 ** Parsing/prettyprinting laws, continued
@@ -289,6 +291,7 @@ unapply (Iso _ g) = g
 \pause
 #+END_LATEX
 
+#+ATTR_REVEAL: :frag roll-in
 $\forall x, y: \text{apply}\; \text{iso}\; x = \text{Just}\; y \iff \text{unapply}\; \text{iso}\; y = \text{Just}\; x$
 
 ** IsoFunctor
@@ -572,7 +575,7 @@ Just "10*(2+3)"
 # ** Bibliography
 # \printbibliography
 
-* Questions?
+# * Questions?
 ** Questions?
    :PROPERTIES:
    :BEAMER_env: fullframe
@@ -589,6 +592,7 @@ Just "10*(2+3)"
 #+END_LATEX
 
 #+BEGIN_CENTER
+#+ATTR_REVEAL: :frag roll-in
 PS btw, we are hiring
 #+END_CENTER
 

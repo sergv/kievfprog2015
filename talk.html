@@ -1502,11 +1502,11 @@ body {
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">data</span> <span style="color: #b58900;">Expr</span> <span style="color: #268bd2;">=</span>
-    <span style="color: #b58900;">Lit</span> <span style="color: #b58900;">Int</span>
-  <span style="color: #268bd2;">|</span> <span style="color: #b58900;">Add</span> <span style="color: #b58900;">Expr</span> <span style="color: #b58900;">Expr</span>
-  <span style="color: #268bd2;">|</span> <span style="color: #b58900;">Mul</span> <span style="color: #b58900;">Expr</span> <span style="color: #b58900;">Expr</span>
-  <span style="color: #2aa198;">deriving</span> (<span style="color: #b58900;">Show</span>)
+<pre  class="src src-haskell">data Expr =
+    Lit Int
+  | Add Expr Expr
+  | Mul Expr Expr
+  deriving (Show)
 </pre>
 </div>
 
@@ -1517,18 +1517,18 @@ body {
 <h3 id="orgheadline3">Sample expression parser</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">exprParser</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Parser</span> <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">exprParser</span> <span style="color: #268bd2;">=</span> pAdd
+<pre  class="src src-haskell">exprParser :: Parser Expr
+exprParser = pAdd
 
-<span style="color: #268bd2;">pAdd</span> <span style="color: #268bd2;">=</span> pMul <span style="color: #268bd2;">&lt;|&gt;</span>
-       <span style="color: #b58900;">Add</span> <span style="color: #268bd2;">&lt;$&gt;</span> pMul <span style="color: #268bd2;">&lt;*</span> pChar <span style="color: #cb4b16;">'+'</span> <span style="color: #268bd2;">&lt;*&gt;</span> pAdd
+pAdd = pMul &lt;|&gt;
+       Add &lt;$&gt; pMul &lt;* pChar '+' &lt;*&gt; pAdd
 
-<span style="color: #268bd2;">pMul</span> <span style="color: #268bd2;">=</span> pAtomic <span style="color: #268bd2;">&lt;|&gt;</span>
-       <span style="color: #b58900;">Mul</span> <span style="color: #268bd2;">&lt;$&gt;</span> pAtomic <span style="color: #268bd2;">&lt;*</span> pChar <span style="color: #cb4b16;">'*'</span> <span style="color: #268bd2;">&lt;*&gt;</span> pMul
+pMul = pAtomic &lt;|&gt;
+       Mul &lt;$&gt; pAtomic &lt;* pChar '*' &lt;*&gt; pMul
 
-<span style="color: #268bd2;">pAtomic</span> <span style="color: #268bd2;">=</span>
-  <span style="color: #b58900;">Lit</span> <span style="color: #268bd2;">&lt;$&gt;</span> pInt <span style="color: #268bd2;">&lt;|&gt;</span>
-  bracket (pChar <span style="color: #cb4b16;">'('</span>) (pChar <span style="color: #cb4b16;">')'</span>) exprParser
+pAtomic =
+  Lit &lt;$&gt; pInt &lt;|&gt;
+  bracket (pChar '(') (pChar ')') exprParser
 </pre>
 </div>
 
@@ -1548,8 +1548,8 @@ I.e. they share some standard set of combinators</li>
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">newtype</span> <span style="color: #b58900;">Parser</span> a <span style="color: #268bd2;">=</span>
-  <span style="color: #b58900;">Parser</span> (<span style="color: #b58900;">String</span> <span style="color: #268bd2;">-&gt;</span> [(a, <span style="color: #b58900;">String</span>)])
+<pre  class="src src-haskell">newtype Parser a =
+  Parser (String -&gt; [(a, String)])
 </pre>
 </div>
 
@@ -1571,7 +1571,7 @@ a typeclass for values, that can be prettyprinted</li>
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">newtype</span> <span style="color: #b58900;">Printer</span> a <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> (a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> <span style="color: #b58900;">String</span>)
+<pre  class="src src-haskell">newtype Printer a = Printer (a -&gt; Maybe String)
 </pre>
 </div>
 
@@ -1586,8 +1586,8 @@ Parsing and prettyprinting are almost inverses of one another.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell" id="parsing prettyprinting inverses"><span style="color: #268bd2;">parseExpr</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">String</span> <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Either</span> <span style="color: #b58900;">String</span> a
-<span style="color: #268bd2;">ppExpr</span>    <span style="color: #268bd2;">::</span> a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">String</span>
+<pre  class="src src-haskell" id="parsing prettyprinting inverses">parseExpr :: String -&gt; Either String a
+ppExpr    :: a -&gt; String
 </pre>
 </div>
 
@@ -4280,7 +4280,7 @@ V5DP5LK4Jb0G2BKX8YWcL90H+AJMKJKoU3GpQC0pgESj4koSscRfOBIRL0cmUMlEyWepy5QlelWJ
 qqFE1VGV11ZTMKGSQK8CAAAAoH4BAACABqil7Szq9EtTc1iSz5wCjkiE5bG4AgFWxOFz+SL2F8nN
 40u0nFAgwiSKTiLhJFIcEYslW0l24fCEiBjhfZnnRvqAX8T5d2skMv2HNSWblaz5YbOKxCr68xoU
 99Naifj/YY1EWP6wlWQbIh6Hx0sEJ46Aw1HIJVvQ5IiSzehUsmQDhgJZcnBFeTIBj9LlSZL/KVBJ
-VIk0lSMpUImSBSUFCglB5L8czQiuVwAAAACoK/4Hvs6qnbhCp/oAAAAASUVORK5CYII=" width="70%" />
+VIk0lSMpUImSBSUFCglB5L8czQiuVwAAAACoK/4Hvs6qnbhCp/oAAAAASUVORK5CYII=" width="50%" />
 </p>
 </div>
 
@@ -4294,13 +4294,13 @@ Well-behaved prettyprinting should produce a string that results in the
 original expression, when parsed.
 </p>
 
-<div class="center">
+<div class="org-center">
 <p>
 \(\text{parseExpr}\, \circ \text{ppExpr} = \text{id}\)
 </p>
 </div>
 
-<p>
+<p class="fragment roll-in">
 However, for (\( \text{ppExpr} \circ \text{parseExpr} \)) this is not the case
 </p>
 
@@ -4317,7 +4317,7 @@ However, for (\( \text{ppExpr} \circ \text{parseExpr} \)) this is not the case
 
 </ul>
 
-<div class="center">
+<div class="org-center">
 <p>
 \(\text{ppExpr} \circ \text{parseExpr} =
   (\text{ppExpr} \circ \text{parseExpr}) \circ (\text{ppExpr} \circ \text{parseExpr})\)
@@ -4346,8 +4346,8 @@ We can add given character to our pretty output.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">getChar</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Parser</span> <span style="color: #b58900;">Char</span>
-<span style="color: #268bd2;">ppChar</span>  <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Printer</span> <span style="color: #b58900;">Char</span>
+<pre  class="src src-haskell">getChar :: Parser Char
+ppChar  :: Printer Char
 </pre>
 </div>
 
@@ -4358,7 +4358,7 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">token</span> <span style="color: #268bd2;">::</span> s <span style="color: #b58900;">Char</span>
+<pre  class="src src-haskell">token :: s Char
 </pre>
 </div>
 
@@ -4382,16 +4382,16 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">class</span> <span style="color: #b58900;">Functor</span> f <span style="color: #2aa198;">where</span>
-  fmap <span style="color: #268bd2;">::</span> (a <span style="color: #268bd2;">-&gt;</span> b) <span style="color: #268bd2;">-&gt;</span> f a <span style="color: #268bd2;">-&gt;</span> f b
+<pre  class="src src-haskell">class Functor f where
+  fmap :: (a -&gt; b) -&gt; f a -&gt; f b
 </pre>
 </div>
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">fmapParser</span> <span style="color: #268bd2;">::</span> (a <span style="color: #268bd2;">-&gt;</span> b) <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Parser</span> a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Parser</span> b
-<span style="color: #268bd2;">fmapParser</span> f (<span style="color: #b58900;">Parser</span> g) <span style="color: #268bd2;">=</span>
-  <span style="color: #b58900;">Parser</span> <span style="color: #268bd2;">$</span> map (<span style="color: #268bd2;">\</span>(x, str) <span style="color: #268bd2;">-&gt;</span> (f x, str)) <span style="color: #268bd2;">.</span> g
+<pre  class="src src-haskell">fmapParser :: (a -&gt; b) -&gt; Parser a -&gt; Parser b
+fmapParser f (Parser g) =
+  Parser $ map (\(x, str) -&gt; (f x, str)) . g
 </pre>
 </div>
 
@@ -4409,12 +4409,12 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #586e75;">-- </span><span style="color: #586e75;">Trying to write vanilla functor instance.</span>
-<span style="color: #268bd2;">f</span> <span style="color: #268bd2;">::</span> (a <span style="color: #268bd2;">-&gt;</span> b) <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Printer</span> a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Printer</span> b
+<pre  class="src src-haskell">-- Trying to write vanilla functor instance.
+f :: (a -&gt; b) -&gt; Printer a -&gt; Printer b
 
-<span style="color: #586e75;">-- </span><span style="color: #586e75;">Expand Printer definition.</span>
-<span style="color: #586e75;">-- </span><span style="color: #586e75;">Cannot write this function.</span>
-<span style="color: #268bd2;">f</span> <span style="color: #268bd2;">::</span> (a <span style="color: #268bd2;">-&gt;</span> b) <span style="color: #268bd2;">-&gt;</span> (a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">String</span>) <span style="color: #268bd2;">-&gt;</span> (b <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">String</span>)
+-- Expand Printer definition.
+-- Cannot write this function.
+f :: (a -&gt; b) -&gt; (a -&gt; String) -&gt; (b -&gt; String)
 </pre>
 </div>
 
@@ -4442,18 +4442,18 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">data</span> <span style="color: #b58900;">Iso</span> a b <span style="color: #268bd2;">=</span>
-  <span style="color: #b58900;">Iso</span> (a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> b) (b <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> a)
+<pre  class="src src-haskell">data Iso a b =
+  Iso (a -&gt; Maybe b) (b -&gt; Maybe a)
 
-<span style="color: #268bd2;">apply</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> a b <span style="color: #268bd2;">-&gt;</span> a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> b
-<span style="color: #268bd2;">apply</span> (<span style="color: #b58900;">Iso</span> f <span style="color: #2aa198;">_</span>) <span style="color: #268bd2;">=</span> f
+apply :: Iso a b -&gt; a -&gt; Maybe b
+apply (Iso f _) = f
 
-<span style="color: #268bd2;">unapply</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> a b <span style="color: #268bd2;">-&gt;</span> b <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> a
-<span style="color: #268bd2;">unapply</span> (<span style="color: #b58900;">Iso</span> <span style="color: #2aa198;">_</span> g) <span style="color: #268bd2;">=</span> g
+unapply :: Iso a b -&gt; b -&gt; Maybe a
+unapply (Iso _ g) = g
 </pre>
 </div>
 
-<p>
+<p class="fragment roll-in">
 \(\forall x, y: \text{apply}\; \text{iso}\; x = \text{Just}\; y \iff \text{unapply}\; \text{iso}\; y = \text{Just}\; x\)
 </p>
 
@@ -4470,20 +4470,20 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">class</span> <span style="color: #b58900;">IsoFunctor</span> f <span style="color: #2aa198;">where</span>
-  (<span style="color: #268bd2;">&lt;$$&gt;</span>) <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> a b <span style="color: #268bd2;">-&gt;</span> f a <span style="color: #268bd2;">-&gt;</span> f b
-<span style="color: #2aa198;">infixr</span> 4 <span style="color: #268bd2;">&lt;$$&gt;</span>
+<pre  class="src src-haskell">class IsoFunctor f where
+  (&lt;$$&gt;) :: Iso a b -&gt; f a -&gt; f b
+infixr 4 &lt;$$&gt;
 
-<span style="color: #2aa198;">instance</span> <span style="color: #b58900;">IsoFunctor</span> <span style="color: #b58900;">Parser</span> <span style="color: #2aa198;">where</span>
-  iso <span style="color: #268bd2;">&lt;$$&gt;</span> <span style="color: #b58900;">Parser</span> p <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Parser</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>s <span style="color: #268bd2;">-&gt;</span>
+instance IsoFunctor Parser where
+  iso &lt;$$&gt; Parser p = Parser $ \s -&gt;
     [ (y, s')
-    <span style="color: #268bd2;">|</span> (x, s') <span style="color: #268bd2;">&lt;-</span> p s
-    , <span style="color: #b58900;">Just</span> y  <span style="color: #268bd2;">&lt;-</span> [apply iso x]
+    | (x, s') &lt;- p s
+    , Just y  &lt;- [apply iso x]
     ]
 
-<span style="color: #2aa198;">instance</span> <span style="color: #b58900;">IsoFunctor</span> <span style="color: #b58900;">Printer</span> <span style="color: #2aa198;">where</span>
-  iso <span style="color: #268bd2;">&lt;$$&gt;</span> <span style="color: #b58900;">Printer</span> g <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> <span style="color: #268bd2;">$</span>
-    unapply iso <span style="color: #268bd2;">&gt;=&gt;</span> g <span style="color: #586e75;">-- </span><span style="color: #586e75;">Maybe monad</span>
+instance IsoFunctor Printer where
+  iso &lt;$$&gt; Printer g = Printer $
+    unapply iso &gt;=&gt; g -- Maybe monad
 </pre>
 </div>
 
@@ -4523,16 +4523,16 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">class</span> (<span style="color: #b58900;">IsoFunctor</span> f) <span style="color: #268bd2;">=&gt;</span> <span style="color: #b58900;">ProductFunctor</span> f <span style="color: #2aa198;">where</span>
-  (<span style="color: #268bd2;">&lt;**&gt;</span>) <span style="color: #268bd2;">::</span> f a <span style="color: #268bd2;">-&gt;</span> f b <span style="color: #268bd2;">-&gt;</span> f (a, b)
+<pre  class="src src-haskell">class (IsoFunctor f) =&gt; ProductFunctor f where
+  (&lt;**&gt;) :: f a -&gt; f b -&gt; f (a, b)
 
-<span style="color: #2aa198;">infixr</span> 5 <span style="color: #268bd2;">&lt;**&gt;</span>
+infixr 5 &lt;**&gt;
 
-<span style="color: #2aa198;">instance</span> <span style="color: #b58900;">ProductFunctor</span> <span style="color: #b58900;">Parser</span> <span style="color: #2aa198;">where</span>
-  <span style="color: #b58900;">Parser</span> p <span style="color: #268bd2;">&lt;**&gt;</span> <span style="color: #b58900;">Parser</span> q <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Parser</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>s <span style="color: #268bd2;">-&gt;</span>
+instance ProductFunctor Parser where
+  Parser p &lt;**&gt; Parser q = Parser $ \s -&gt;
     [ ((x, y), s'')
-    <span style="color: #268bd2;">|</span> (x, s')  <span style="color: #268bd2;">&lt;-</span> p s
-    , (y, s'') <span style="color: #268bd2;">&lt;-</span> q s'
+    | (x, s')  &lt;- p s
+    , (y, s'') &lt;- q s'
     ]
 </pre>
 </div>
@@ -4544,24 +4544,24 @@ works with characters.
 <h3 id="orgheadline20">Printer instance</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">class</span> (<span style="color: #b58900;">IsoFunctor</span> f) <span style="color: #268bd2;">=&gt;</span> <span style="color: #b58900;">ProductFunctor</span> f <span style="color: #2aa198;">where</span>
-  (<span style="color: #268bd2;">&lt;**&gt;</span>) <span style="color: #268bd2;">::</span> f a <span style="color: #268bd2;">-&gt;</span> f b <span style="color: #268bd2;">-&gt;</span> f (a, b)
+<pre  class="src src-haskell">class (IsoFunctor f) =&gt; ProductFunctor f where
+  (&lt;**&gt;) :: f a -&gt; f b -&gt; f (a, b)
 </pre>
 </div>
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">instance</span> <span style="color: #b58900;">ProductFunctor</span> <span style="color: #b58900;">Printer</span> <span style="color: #2aa198;">where</span>
-  <span style="color: #b58900;">Printer</span> p <span style="color: #268bd2;">&lt;**&gt;</span> <span style="color: #b58900;">Printer</span> q <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> <span style="color: #268bd2;">$</span>
-    <span style="color: #268bd2;">\</span>(x, y) <span style="color: #268bd2;">-&gt;</span> liftA2 (<span style="color: #268bd2;">++</span>) (p x) (q y)
+<pre  class="src src-haskell">instance ProductFunctor Printer where
+  Printer p &lt;**&gt; Printer q = Printer $
+    \(x, y) -&gt; liftA2 (++) (p x) (q y)
 </pre>
 </div>
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">liftA2</span>
-  <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Applicative</span> f)
-  <span style="color: #268bd2;">=&gt;</span> (a <span style="color: #268bd2;">-&gt;</span> b <span style="color: #268bd2;">-&gt;</span> c) <span style="color: #268bd2;">-&gt;</span> f a <span style="color: #268bd2;">-&gt;</span> f b <span style="color: #268bd2;">-&gt;</span> f c
+<pre  class="src src-haskell">liftA2
+  :: (Applicative f)
+  =&gt; (a -&gt; b -&gt; c) -&gt; f a -&gt; f b -&gt; f c
 </pre>
 </div>
 
@@ -4585,12 +4585,12 @@ works with characters.
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">class</span> <span style="color: #b58900;">PureAlternative</span> f <span style="color: #2aa198;">where</span>
-  <span style="color: #586e75;">-- </span><span style="color: #586e75;">parser or printer that always fails</span>
-  emptyAlt <span style="color: #268bd2;">::</span> f a
-  (<span style="color: #268bd2;">&lt;||&gt;</span>)   <span style="color: #268bd2;">::</span> f a <span style="color: #268bd2;">-&gt;</span> f a <span style="color: #268bd2;">-&gt;</span> f a
+<pre  class="src src-haskell">class PureAlternative f where
+  -- parser or printer that always fails
+  emptyAlt :: f a
+  (&lt;||&gt;)   :: f a -&gt; f a -&gt; f a
 
-<span style="color: #2aa198;">infixl</span> 3 <span style="color: #268bd2;">&lt;||&gt;</span>
+infixl 3 &lt;||&gt;
 </pre>
 </div>
 
@@ -4601,14 +4601,14 @@ works with characters.
 <h3 id="orgheadline23">Alternative instances</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">instance</span> <span style="color: #b58900;">PureAlternative</span> <span style="color: #b58900;">Parser</span> <span style="color: #2aa198;">where</span>
-  <span style="color: #b58900;">Parser</span> p <span style="color: #268bd2;">&lt;||&gt;</span> <span style="color: #b58900;">Parser</span> q <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Parser</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>s <span style="color: #268bd2;">-&gt;</span> p s <span style="color: #268bd2;">++</span> q s
-  emptyAlt               <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Parser</span> <span style="color: #268bd2;">$</span> const <span style="color: #b58900;">[]</span>
+<pre  class="src src-haskell">instance PureAlternative Parser where
+  Parser p &lt;||&gt; Parser q = Parser $ \s -&gt; p s ++ q s
+  emptyAlt               = Parser $ const []
 
-<span style="color: #2aa198;">instance</span> <span style="color: #b58900;">PureAlternative</span> <span style="color: #b58900;">Printer</span> <span style="color: #2aa198;">where</span>
-  <span style="color: #b58900;">Printer</span> p <span style="color: #268bd2;">&lt;||&gt;</span> <span style="color: #b58900;">Printer</span> q <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>x <span style="color: #268bd2;">-&gt;</span>
-    p x <span style="color: #268bd2;">&lt;|&gt;</span> q x
-  emptyAlt                 <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span><span style="color: #2aa198;">_</span> <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Nothing</span>
+instance PureAlternative Printer where
+  Printer p &lt;||&gt; Printer q = Printer $ \x -&gt;
+    p x &lt;|&gt; q x
+  emptyAlt                 = Printer $ \_ -&gt; Nothing
 </pre>
 </div>
 
@@ -4619,13 +4619,13 @@ works with characters.
 <h3 id="orgheadline24">Putting it all together</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">class</span> ( <span style="color: #b58900;">IsoFunctor</span> s
-      , <span style="color: #b58900;">ProductFunctor</span> s
-      , <span style="color: #b58900;">PureAlternative</span> s
-      ) <span style="color: #268bd2;">=&gt;</span> <span style="color: #b58900;">Syntax</span> s <span style="color: #2aa198;">where</span>
-  token <span style="color: #268bd2;">::</span> s <span style="color: #b58900;">Char</span>
-  <span style="color: #586e75;">-- </span><span style="color: #586e75;">Eq constraint is for printer</span>
-  pureSyn <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Eq</span> a) <span style="color: #268bd2;">=&gt;</span> a <span style="color: #268bd2;">-&gt;</span> s a
+<pre  class="src src-haskell">class ( IsoFunctor s
+      , ProductFunctor s
+      , PureAlternative s
+      ) =&gt; Syntax s where
+  token :: s Char
+  -- Eq constraint is for printer
+  pureSyn :: (Eq a) =&gt; a -&gt; s a
 </pre>
 </div>
 
@@ -4636,12 +4636,12 @@ works with characters.
 <h3 id="orgheadline25">Syntax for Parser</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">instance</span> <span style="color: #b58900;">Syntax</span> <span style="color: #b58900;">Parser</span> <span style="color: #2aa198;">where</span>
-  pureSyn x <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Parser</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>s <span style="color: #268bd2;">-&gt;</span> [(x, s)]
-  token <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Parser</span> f
-    <span style="color: #2aa198;">where</span>
-      f (c<span style="color: #b58900;">:</span>cs) <span style="color: #268bd2;">=</span> [(c, cs)]
-      f <span style="color: #b58900;">[]</span>     <span style="color: #268bd2;">=</span> <span style="color: #b58900;">[]</span>
+<pre  class="src src-haskell">instance Syntax Parser where
+  pureSyn x = Parser $ \s -&gt; [(x, s)]
+  token = Parser f
+    where
+      f (c:cs) = [(c, cs)]
+      f []     = []
 </pre>
 </div>
 
@@ -4652,21 +4652,21 @@ works with characters.
 <h3 id="orgheadline26">Syntax for Printer</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #2aa198;">instance</span> <span style="color: #b58900;">Syntax</span> <span style="color: #b58900;">Printer</span> <span style="color: #2aa198;">where</span>
-  pureSyn x <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>x' <span style="color: #268bd2;">-&gt;</span>
-    <span style="color: #2aa198;">if</span> x <span style="color: #268bd2;">==</span> x'
-    <span style="color: #2aa198;">then</span> <span style="color: #b58900;">Just</span> <span style="color: #b58900;">[]</span>
-    <span style="color: #2aa198;">else</span> <span style="color: #b58900;">Nothing</span>
-  token  <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Printer</span> <span style="color: #268bd2;">$</span> <span style="color: #268bd2;">\</span>c <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Just</span> [c]
+<pre  class="src src-haskell">instance Syntax Printer where
+  pureSyn x = Printer $ \x' -&gt;
+    if x == x'
+    then Just []
+    else Nothing
+  token  = Printer $ \c -&gt; Just [c]
 </pre>
 </div>
 
 </section>
 </section>
 <section>
-<section id="slide-orgheadline37">
-<h2 id="orgheadline37">Expression syntax</h2>
-<div class="outline-text-2" id="text-orgheadline37">
+<section id="slide-orgheadline38">
+<h2 id="orgheadline38">Expression syntax</h2>
+<div class="outline-text-2" id="text-orgheadline38">
 </div></section>
 </section>
 <section>
@@ -4674,17 +4674,17 @@ works with characters.
 <h3 id="orgheadline28">Parsing digits</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">subset</span> <span style="color: #268bd2;">::</span> (a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Bool</span>) <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Iso</span> a a
-<span style="color: #268bd2;">subset</span> p <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f f
-  <span style="color: #2aa198;">where</span>
-    f x <span style="color: #268bd2;">|</span> p x       <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> x
-        <span style="color: #268bd2;">|</span> otherwise <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
+<pre  class="src src-haskell">subset :: (a -&gt; Bool) -&gt; Iso a a
+subset p = Iso f f
+  where
+    f x | p x       = Just x
+        | otherwise = Nothing
 
-<span style="color: #268bd2;">digit</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s <span style="color: #b58900;">Char</span>
-<span style="color: #268bd2;">digit</span> <span style="color: #268bd2;">=</span> subset isDigit <span style="color: #268bd2;">&lt;$$&gt;</span> token
+digit :: (Syntax s) =&gt; s Char
+digit = subset isDigit &lt;$$&gt; token
 
-<span style="color: #268bd2;">isDigit</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Char</span> <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Bool</span>
-<span style="color: #268bd2;">isDigit</span> c <span style="color: #268bd2;">=</span> <span style="color: #cb4b16;">'0'</span> <span style="color: #268bd2;">&lt;=</span> c <span style="color: #268bd2;">&amp;&amp;</span> c <span style="color: #268bd2;">&lt;=</span> <span style="color: #cb4b16;">'9'</span>
+isDigit :: Char -&gt; Bool
+isDigit c = '0' &lt;= c &amp;&amp; c &lt;= '9'
 </pre>
 </div>
 
@@ -4695,19 +4695,19 @@ works with characters.
 <h3 id="orgheadline29">Utilities for parsing sequences</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">isoNil</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> <span style="color: #b58900;">()</span> [a]
-<span style="color: #268bd2;">isoNil</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g
-  <span style="color: #2aa198;">where</span>
-    f <span style="color: #b58900;">()</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #b58900;">[]</span>
-    g <span style="color: #b58900;">[]</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #b58900;">()</span>
-    g <span style="color: #2aa198;">_</span>  <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
+<pre  class="src src-haskell">isoNil :: Iso () [a]
+isoNil = Iso f g
+  where
+    f () = Just []
+    g [] = Just ()
+    g _  = Nothing
 
-<span style="color: #268bd2;">isoCons</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> (a, [a]) [a]
-<span style="color: #268bd2;">isoCons</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g
-  <span style="color: #2aa198;">where</span>
-    f (x, xs) <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #268bd2;">$</span> x <span style="color: #b58900;">:</span> xs
-    g (x<span style="color: #b58900;">:</span>xs)  <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> (x, xs)
-    g <span style="color: #b58900;">[]</span>      <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
+isoCons :: Iso (a, [a]) [a]
+isoCons = Iso f g
+  where
+    f (x, xs) = Just $ x : xs
+    g (x:xs)  = Just (x, xs)
+    g []      = Nothing
 </pre>
 </div>
 
@@ -4718,12 +4718,12 @@ works with characters.
 <h3 id="orgheadline30">Utilities for parsing sequences, continued</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">pmany</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s a <span style="color: #268bd2;">-&gt;</span> s [a]
-<span style="color: #268bd2;">pmany</span> p <span style="color: #268bd2;">=</span> isoNil <span style="color: #268bd2;">&lt;$$&gt;</span> pureSyn <span style="color: #b58900;">()</span> <span style="color: #268bd2;">&lt;||&gt;</span>
-          isoCons <span style="color: #268bd2;">&lt;$$&gt;</span> p <span style="color: #268bd2;">&lt;**&gt;</span> pmany p
+<pre  class="src src-haskell">pmany :: (Syntax s) =&gt; s a -&gt; s [a]
+pmany p = isoNil &lt;$$&gt; pureSyn () &lt;||&gt;
+          isoCons &lt;$$&gt; p &lt;**&gt; pmany p
 
-<span style="color: #268bd2;">pmany1</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s a <span style="color: #268bd2;">-&gt;</span> s [a]
-<span style="color: #268bd2;">pmany1</span> p <span style="color: #268bd2;">=</span> isoCons <span style="color: #268bd2;">&lt;$$&gt;</span> p <span style="color: #268bd2;">&lt;**&gt;</span> pmany p
+pmany1 :: (Syntax s) =&gt; s a -&gt; s [a]
+pmany1 p = isoCons &lt;$$&gt; p &lt;**&gt; pmany p
 </pre>
 </div>
 
@@ -4734,22 +4734,22 @@ works with characters.
 <h3 id="orgheadline31">Parsing numbers</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">inverse</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> a b <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Iso</span> b a
-<span style="color: #268bd2;">inverse</span> (<span style="color: #b58900;">Iso</span> f g) <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> g f
+<pre  class="src src-haskell">inverse :: Iso a b -&gt; Iso b a
+inverse (Iso f g) = Iso g f
 
-<span style="color: #268bd2;">decimal</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> <span style="color: #b58900;">Int</span> <span style="color: #b58900;">String</span>
-<span style="color: #268bd2;">decimal</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g
-  <span style="color: #2aa198;">where</span>
-    f <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #268bd2;">.</span> show
-    g str <span style="color: #268bd2;">|</span> all isDigit str
-          <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #268bd2;">$</span>
-            foldl' (<span style="color: #268bd2;">\</span>a x <span style="color: #268bd2;">-&gt;</span> a <span style="color: #268bd2;">*</span> 10 <span style="color: #268bd2;">+</span> h x) 0 str
-          <span style="color: #268bd2;">|</span> otherwise
-          <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
-    h x <span style="color: #268bd2;">=</span> ord x <span style="color: #268bd2;">-</span> ord <span style="color: #cb4b16;">'0'</span>
+decimal :: Iso Int String
+decimal = Iso f g
+  where
+    f = Just . show
+    g str | all isDigit str
+          = Just $
+            foldl' (\a x -&gt; a * 10 + h x) 0 str
+          | otherwise
+          = Nothing
+    h x = ord x - ord '0'
 
-<span style="color: #268bd2;">integer</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s <span style="color: #b58900;">Int</span>
-<span style="color: #268bd2;">integer</span> <span style="color: #268bd2;">=</span> inverse decimal <span style="color: #268bd2;">&lt;$$&gt;</span> pmany digit
+integer :: (Syntax s) =&gt; s Int
+integer = inverse decimal &lt;$$&gt; pmany digit
 </pre>
 </div>
 
@@ -4764,12 +4764,12 @@ Can derive these via Template Haskell
 
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">lit</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> <span style="color: #b58900;">Int</span> <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">lit</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g
-  <span style="color: #2aa198;">where</span>
-    f n <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #268bd2;">$</span> <span style="color: #b58900;">Lit</span> n
-    g (<span style="color: #b58900;">Lit</span> n) <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> n
-    g <span style="color: #2aa198;">_</span>       <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
+<pre  class="src src-haskell">lit :: Iso Int Expr
+lit = Iso f g
+  where
+    f n = Just $ Lit n
+    g (Lit n) = Just n
+    g _       = Nothing
 </pre>
 </div>
 
@@ -4780,19 +4780,19 @@ Can derive these via Template Haskell
 <h3 id="orgheadline33">Utilities for parsing expressions, continued</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">add</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> (<span style="color: #b58900;">Expr</span>, <span style="color: #b58900;">Expr</span>) <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">add</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g
-  <span style="color: #2aa198;">where</span>
-    f (x, y)    <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #268bd2;">$</span> <span style="color: #b58900;">Add</span> x y
-    g (<span style="color: #b58900;">Add</span> x y) <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> (x, y)
-    g <span style="color: #2aa198;">_</span>         <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
+<pre  class="src src-haskell">add :: Iso (Expr, Expr) Expr
+add = Iso f g
+  where
+    f (x, y)    = Just $ Add x y
+    g (Add x y) = Just (x, y)
+    g _         = Nothing
 
-<span style="color: #268bd2;">mul</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Iso</span> (<span style="color: #b58900;">Expr</span>, <span style="color: #b58900;">Expr</span>) <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">mul</span> <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g
-  <span style="color: #2aa198;">where</span>
-    f (x, y)    <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> <span style="color: #268bd2;">$</span> <span style="color: #b58900;">Mul</span> x y
-    g (<span style="color: #b58900;">Mul</span> x y) <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> (x, y)
-    g <span style="color: #2aa198;">_</span>         <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
+mul :: Iso (Expr, Expr) Expr
+mul = Iso f g
+  where
+    f (x, y)    = Just $ Mul x y
+    g (Mul x y) = Just (x, y)
+    g _         = Nothing
 </pre>
 </div>
 
@@ -4803,22 +4803,22 @@ Can derive these via Template Haskell
 <h3 id="orgheadline34">Some non-modular utilities for parsing expressions</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell">(<span style="color: #268bd2;">**&gt;</span>) <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> <span style="color: #b58900;">Char</span> <span style="color: #268bd2;">-&gt;</span> s a <span style="color: #268bd2;">-&gt;</span> s a
-(<span style="color: #268bd2;">**&gt;</span>) c s <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Iso</span> f g <span style="color: #268bd2;">&lt;$$&gt;</span> token <span style="color: #268bd2;">&lt;**&gt;</span> s
-  <span style="color: #2aa198;">where</span>
-    f (c', x) <span style="color: #268bd2;">|</span> c <span style="color: #268bd2;">==</span> c'   <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> x
-              <span style="color: #268bd2;">|</span> otherwise <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
-    g x <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> (c, x)
+<pre  class="src src-haskell">(**&gt;) :: (Syntax s) =&gt; Char -&gt; s a -&gt; s a
+(**&gt;) c s = Iso f g &lt;$$&gt; token &lt;**&gt; s
+  where
+    f (c', x) | c == c'   = Just x
+              | otherwise = Nothing
+    g x = Just (c, x)
 
-<span style="color: #268bd2;">between</span>
-  <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> <span style="color: #b58900;">Char</span> <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Char</span> <span style="color: #268bd2;">-&gt;</span> s a <span style="color: #268bd2;">-&gt;</span> s a
-<span style="color: #268bd2;">between</span> l r s <span style="color: #268bd2;">=</span>
-  <span style="color: #b58900;">Iso</span> f g <span style="color: #268bd2;">&lt;$$&gt;</span> token <span style="color: #268bd2;">&lt;**&gt;</span> s <span style="color: #268bd2;">&lt;**&gt;</span> token
-  <span style="color: #2aa198;">where</span>
+between
+  :: (Syntax s) =&gt; Char -&gt; Char -&gt; s a -&gt; s a
+between l r s =
+  Iso f g &lt;$$&gt; token &lt;**&gt; s &lt;**&gt; token
+  where
     f (l', (x, r'))
-      <span style="color: #268bd2;">|</span> l <span style="color: #268bd2;">==</span> l' <span style="color: #268bd2;">&amp;&amp;</span> r <span style="color: #268bd2;">==</span> r' <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> x
-      <span style="color: #268bd2;">|</span> otherwise          <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Nothing</span>
-    g x <span style="color: #268bd2;">=</span> <span style="color: #b58900;">Just</span> (l, (x, r))
+      | l == l' &amp;&amp; r == r' = Just x
+      | otherwise          = Nothing
+    g x = Just (l, (x, r))
 </pre>
 </div>
 
@@ -4829,19 +4829,19 @@ Can derive these via Template Haskell
 <h3 id="orgheadline35">Parsing expressions</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">expr</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">expr</span> <span style="color: #268bd2;">=</span>
-  add <span style="color: #268bd2;">&lt;$$&gt;</span> factor <span style="color: #268bd2;">&lt;**&gt;</span> <span style="color: #cb4b16;">'+'</span> <span style="color: #268bd2;">**&gt;</span> expr <span style="color: #268bd2;">&lt;||&gt;</span>
+<pre  class="src src-haskell">expr :: (Syntax s) =&gt; s Expr
+expr =
+  add &lt;$$&gt; factor &lt;**&gt; '+' **&gt; expr &lt;||&gt;
   factor
 
-<span style="color: #268bd2;">factor</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">factor</span> <span style="color: #268bd2;">=</span>
-  mul <span style="color: #268bd2;">&lt;$$&gt;</span> atomic <span style="color: #268bd2;">&lt;**&gt;</span> <span style="color: #cb4b16;">'*'</span> <span style="color: #268bd2;">**&gt;</span> factor <span style="color: #268bd2;">&lt;||&gt;</span>
+factor :: (Syntax s) =&gt; s Expr
+factor =
+  mul &lt;$$&gt; atomic &lt;**&gt; '*' **&gt; factor &lt;||&gt;
   atomic
 
-<span style="color: #268bd2;">atomic</span> <span style="color: #268bd2;">::</span> (<span style="color: #b58900;">Syntax</span> s) <span style="color: #268bd2;">=&gt;</span> s <span style="color: #b58900;">Expr</span>
-<span style="color: #268bd2;">atomic</span> <span style="color: #268bd2;">=</span> lit <span style="color: #268bd2;">&lt;$$&gt;</span> integer <span style="color: #268bd2;">&lt;||&gt;</span>
-         between <span style="color: #cb4b16;">'('</span> <span style="color: #cb4b16;">')'</span> expr
+atomic :: (Syntax s) =&gt; s Expr
+atomic = lit &lt;$$&gt; integer &lt;||&gt;
+         between '(' ')' expr
 </pre>
 </div>
 
@@ -4852,14 +4852,14 @@ Can derive these via Template Haskell
 <h3 id="orgheadline36">Test run</h3>
 <div class="org-src-container">
 
-<pre  class="src src-haskell"><span style="color: #268bd2;">runParser</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Parser</span> a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">String</span> <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> a
-<span style="color: #268bd2;">runParser</span> (<span style="color: #b58900;">Parser</span> p) str <span style="color: #268bd2;">=</span>
-  <span style="color: #2aa198;">case</span> dropWhile (not <span style="color: #268bd2;">.</span> null <span style="color: #268bd2;">.</span> snd) <span style="color: #268bd2;">$</span> p str <span style="color: #2aa198;">of</span>
-    (x, <span style="color: #b58900;">[]</span>)<span style="color: #b58900;">:</span><span style="color: #2aa198;">_</span> <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Just</span> x
-    <span style="color: #2aa198;">_</span>         <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Nothing</span>
+<pre  class="src src-haskell">runParser :: Parser a -&gt; String -&gt; Maybe a
+runParser (Parser p) str =
+  case dropWhile (not . null . snd) $ p str of
+    (x, []):_ -&gt; Just x
+    _         -&gt; Nothing
 
-<span style="color: #268bd2;">runPrinter</span> <span style="color: #268bd2;">::</span> <span style="color: #b58900;">Printer</span> a <span style="color: #268bd2;">-&gt;</span> a <span style="color: #268bd2;">-&gt;</span> <span style="color: #b58900;">Maybe</span> <span style="color: #b58900;">String</span>
-<span style="color: #268bd2;">runPrinter</span> (<span style="color: #b58900;">Printer</span> p) <span style="color: #268bd2;">=</span> p
+runPrinter :: Printer a -&gt; a -&gt; Maybe String
+runPrinter (Printer p) = p
 </pre>
 </div>
 
@@ -4878,19 +4878,13 @@ Just "10*(2+3)"
 </section>
 </section>
 <section>
-<section id="slide-orgheadline39">
-<h2 id="orgheadline39">Questions?</h2>
-<div class="outline-text-2" id="text-orgheadline39">
-</div></section>
-</section>
-<section>
-<section id="slide-orgheadline38">
-<h3 id="orgheadline38">Questions?</h3>
-<div class="center">
+<section id="slide-orgheadline37">
+<h3 id="orgheadline37">Questions?</h3>
+<div class="org-center">
 </div>
 
-<div class="center">
-<p>
+<div class="org-center">
+<p class="fragment roll-in">
 PS btw, we are hiring
 </p>
 </div>
@@ -9433,7 +9427,8 @@ keyboard: true,
 overview: true,
 width: 1200,
 height: 800,
-margin: 0.20,
+margin: 0.10,
+minScale: 0.80,
 
 theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
 transition: Reveal.getQueryHash().transition || 'linear', // default/cube/page/concave/zoom/linear/fade/none
